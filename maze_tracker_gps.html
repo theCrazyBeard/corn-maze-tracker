@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#173c2c">
+<title>Maze Tracker — Prototype</title>
+<style>
+:root{--green:#173c2c;--mint:#dff1e4;--ink:#17251d;--muted:#64736a;--blue:#1677df;--gold:#e7a92e;--paper:#f8f7ef}
+*{box-sizing:border-box}body{margin:0;background:#f2f5f1;color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:var(--green);color:white;padding:16px 18px 14px;position:sticky;top:0;z-index:2}
+h1{font-size:21px;margin:0 0 3px}header p{margin:0;color:#d6e7da;font-size:13px}
+main{max-width:850px;margin:auto;padding:12px;display:grid;gap:12px}
+.panel{background:white;border:1px solid #dce4dc;border-radius:16px;padding:13px;box-shadow:0 2px 8px #183b2b0b}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}
+button,.filelabel,select{font:inherit;border-radius:10px;border:1px solid #cbd8cd;padding:10px 12px;background:white;color:var(--ink);min-height:42px}
+button{cursor:pointer;font-weight:650}.primary{background:var(--green);color:white;border-color:var(--green)}.soft{background:#eaf3eb;border-color:#d6e7d8}.danger{color:#9c2929}
+.filelabel{display:flex;align-items:center;justify-content:center;text-align:center;font-weight:650;cursor:pointer;background:#eaf3eb}input[type=file]{display:none}
+label.small{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
+select{width:100%}.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{min-width:0}
+#mapWrap{height:min(57vh,520px);min-height:300px;background:var(--paper);border-radius:12px;overflow:hidden;position:relative;touch-action:pan-y}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+.mapbadge{position:absolute;left:10px;top:10px;background:#fffE;border:1px solid #d7dfd5;border-radius:9px;padding:6px 9px;font-size:12px;font-weight:650}
+.stats{display:flex;gap:8px}.stat{background:#f3f6f2;border-radius:10px;padding:9px;flex:1;min-width:0}.stat b{display:block;font-size:16px}.stat span{font-size:11px;color:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#536157}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.hint{font-size:12px;line-height:1.45;color:var(--muted);margin:8px 0 0}.sectiontitle{font-size:14px;font-weight:750;margin:0 0 10px}
+@media(min-width:700px){main{grid-template-columns:300px 1fr;align-items:start} .mapPanel{grid-column:2;grid-row:1 / span 3}#mapWrap{height:560px}.setup{grid-column:1;grid-row:1}.tracking{grid-column:1;grid-row:2}.help{grid-column:1;grid-row:3}}
+</style>
+</head>
+<body>
+<header><h1>🌽 Maze Tracker</h1><p>Interactive maze map · manual positioning + GPS readout</p></header>
+<main>
+<section class="panel setup">
+<h2 class="sectiontitle">1. Load your maze</h2>
+<div class="row">
+<label class="filelabel" for="imageFile">Choose map picture</label><input id="imageFile" type="file" accept="image/*">
+<button id="demoBtn" class="soft">Use demo</button>
+</div>
+<p class="hint" id="fileStatus">A sample maze is shown. Choose a JPG, PNG, or another phone image to try your own map.</p>
+<div style="margin-top:13px" class="field">
+<label class="small" for="pathMode">What counts as a path?</label>
+<select id="pathMode"><option value="lines">The lines are the paths</option><option value="spaces">The spaces between lines are paths</option><option value="manual">I'll mark my position manually (map only)</option></select>
+</div>
+</section>
+<section class="panel mapPanel">
+<div class="row" style="margin-bottom:10px"><h2 class="sectiontitle" style="margin:0;flex:2">2. Tap the map to move</h2><button id="zoomOutBtn" aria-label="Zoom out">−</button><button id="zoomInBtn" aria-label="Zoom in">+</button><button id="fitBtn" class="soft">Fit map</button></div>
+<div id="mapWrap"><canvas id="mapCanvas" aria-label="Interactive maze map. Tap to place your location."></canvas><div class="mapbadge" id="mapBadge">Tap map to set location</div></div>
+<p class="hint">Tap to place your position. Pinch with two fingers to zoom, drag with one finger to pan after zooming, or use + / −. Double-tap to zoom in. This prototype does not yet snap to corridors or use GPS.</p>
+</section>
+<section class="panel tracking">
+<h2 class="sectiontitle">3. Your progress</h2>
+<div class="stats"><div class="stat"><b id="pointCount">0</b><span>Recorded points</span></div><div class="stat"><b id="distance">0</b><span>Map distance*</span></div></div>
+<div class="row" style="margin-top:10px"><button id="undoBtn">Undo last point</button><button id="clearBtn" class="danger">Clear trail</button></div>
+<div class="row" style="margin-top:8px"><button id="startBtn" class="primary">Set start here</button><button id="exportBtn">Export trail</button></div>
+<div class="row" style="margin-top:8px"><button id="saveBtn" class="soft">Save session now</button><button id="restoreBtn">Restore saved session</button></div>
+<p class="hint" id="saveStatus" aria-live="polite">Session saving will start when the map is ready.</p>
+<div class="panel" style="margin-top:10px;padding:10px">
+  <div class="row" style="align-items:center">
+    <strong>GPS location</strong><span class="badge" id="gpsBadge">GPS off</span>
+  </div>
+  <p class="hint" id="gpsStatus" aria-live="polite">Start GPS to request your phone's location and see its accuracy.</p>
+  <div class="row" style="margin-top:8px">
+    <button id="gpsStartBtn" class="primary">Start GPS</button>
+    <button id="gpsStopBtn" disabled>Stop GPS</button>
+  </div>
+  <p class="hint">GPS coordinates are shown here, but they cannot be plotted onto the maze picture until the map is calibrated to real-world coordinates. You can still tap the map to correct your position manually.</p>
+</div>
+<p class="hint">*Distance is measured in image pixels, not feet or meters. Export saves your trail coordinates as a JSON file.</p>
+</section>
+<section class="panel help">
+<h2 class="sectiontitle">Color key</h2>
+<div class="legend"><span><i class="dot" style="background:#e7a92e"></i>Traveled trail</span><span><i class="dot" style="background:#1677df"></i>Current position</span><span><i class="dot" style="background:#21844a"></i>Start point</span></div>
+<p class="hint">Tip: use a clear, straight-on photo for the best view. This prototype now saves your map and trail in this browser on this device. Browser storage can be cleared by your device or browser settings.</p>
+</section>
+</main>
+<script>
+const canvas=document.getElementById('mapCanvas'),ctx=canvas.getContext('2d');
+const fileInput=document.getElementById('imageFile'),statusEl=document.getElementById('fileStatus');
+let img=new Image(), hasMap=false, trail=[], start=null, current=null, scale=1, offsetX=0,offsetY=0, drag=null, viewW=0,viewH=0;
+const DB_NAME='maze-tracker-db', DB_STORE='sessions', DB_KEY='latest';
+let saveTimer=null, dbPromise=null;
+let gpsWatchId=null, latestGPS=null;
+function setGPSStatus(message, badge='GPS off'){
+ const s=document.getElementById('gpsStatus'), b=document.getElementById('gpsBadge');
+ if(s)s.textContent=message;if(b)b.textContent=badge;
+}
+function startGPS(){
+ if(!navigator.geolocation){setGPSStatus('Geolocation is not available in this browser. Try opening the prototype in a browser with location support.','Unavailable');return}
+ if(gpsWatchId!==null)return;
+ setGPSStatus('Requesting location permission…','Waiting');
+ gpsWatchId=navigator.geolocation.watchPosition(pos=>{
+  latestGPS={latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:pos.coords.accuracy,timestamp:pos.timestamp};
+  const acc=Math.round(pos.coords.accuracy);
+  setGPSStatus('Latitude: '+pos.coords.latitude.toFixed(6)+' · Longitude: '+pos.coords.longitude.toFixed(6)+' · Accuracy: about '+acc+' m · Updated '+new Date(pos.timestamp).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}),acc<=10?'Good fix':acc<=30?'Fair fix':'Weak fix');
+  scheduleSave();
+ },err=>{
+  const message=err.code===1?'Location permission denied. Allow location access for this browser in Android settings, then try again.':err.code===2?'Your phone could not determine a location. Try moving to a more open area.':'Location request timed out. Keep GPS enabled and try again.';
+  setGPSStatus(message,'GPS error');stopGPS(false);
+ },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+ document.getElementById('gpsStartBtn').disabled=true;
+ document.getElementById('gpsStopBtn').disabled=false;
+}
+function stopGPS(showStatus=true){
+ if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null}
+ document.getElementById('gpsStartBtn').disabled=false;
+ document.getElementById('gpsStopBtn').disabled=true;
+ if(showStatus)setGPSStatus(latestGPS?'GPS paused. Last coordinates are retained above.':'GPS stopped.','GPS paused');
+}
+
+function openDB(){
+ if(!('indexedDB' in window)) return Promise.reject(new Error('Browser storage is not available.'));
+ if(dbPromise)return dbPromise;
+ dbPromise=new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME,1);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(DB_STORE))req.result.createObjectStore(DB_STORE)};
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('Could not open storage.'));
+ });
+ return dbPromise;
+}
+function setSaveStatus(msg){const el=document.getElementById('saveStatus');if(el)el.textContent=msg}
+function imageAsDataURL(image){
+ if(!image || !image.naturalWidth) return Promise.resolve(null);
+ try {const c=document.createElement('canvas');c.width=image.naturalWidth;c.height=image.naturalHeight;c.getContext('2d').drawImage(image,0,0);return Promise.resolve(c.toDataURL('image/jpeg',0.88))}
+ catch(e){return Promise.reject(e)}
+}
+async function saveSession(showMessage=true){
+ try{
+  const imageData=await imageAsDataURL(img);
+  const session={imageData, trail, start, current, latestGPS, pathMode:document.getElementById('pathMode').value, savedAt:new Date().toISOString()};
+  const db=await openDB();
+  await new Promise((resolve,reject)=>{const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put(session,DB_KEY);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Save failed.'))});
+  if(showMessage)setSaveStatus('Saved on this device · '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
+ }catch(e){if(showMessage)setSaveStatus('Could not save automatically. Use Export trail as a backup.')}
+}
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveSession(false).then(()=>setSaveStatus('Progress saved on this device.')).catch(()=>setSaveStatus('Auto-save unavailable. Export your trail as a backup.')),500)}
+async function restoreSession(){
+ try{
+  const db=await openDB();
+  const session=await new Promise((resolve,reject)=>{const tx=db.transaction(DB_STORE,'readonly');const req=tx.objectStore(DB_STORE).get(DB_KEY);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});
+  if(!session){setSaveStatus('No saved session found on this device yet.');return}
+  trail=Array.isArray(session.trail)?session.trail:[];start=session.start||null;current=session.current||null;latestGPS=session.latestGPS||null;
+  if(session.pathMode)document.getElementById('pathMode').value=session.pathMode;
+  if(session.imageData){
+   img=new Image();img.onload=()=>{hasMap=true;fit();draw();setSaveStatus('Restored your saved map and trail.');};
+   img.onerror=()=>setSaveStatus('Trail restored, but the saved map image could not be loaded.');
+   img.src=session.imageData;
+  }else{draw();setSaveStatus('Restored saved trail data.')}
+ }catch(e){setSaveStatus('Could not restore a session from this browser.')}
+}
+
+function makeDemo(){
+ const w=800,h=1000,c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');
+ g.fillStyle='#faf8ed';g.fillRect(0,0,w,h);g.strokeStyle='#4f6d48';g.lineWidth=18;g.lineCap='round';g.lineJoin='round';
+ const paths=[
+ [[35,40],[220,40],[220,160],[100,160],[100,280],[330,280],[330,70],[500,70],[500,220],[400,220],[400,390],[700,390]],
+ [[35,160],[60,160],[60,390],[220,390],[220,330],[550,330],[550,480],[740,480]],
+ [[35,280],[150,280],[150,520],[330,520],[330,430],[620,430],[620,590],[740,590]],
+ [[35,390],[100,390],[100,680],[220,680],[220,580],[450,580],[450,720],[740,720]],
+ [[35,520],[60,520],[60,850],[330,850],[330,760],[550,760],[550,900],[740,900]],
+ [[220,40],[220,100],[270,100],[270,220],[220,220],[220,280]],
+ [[500,70],[600,70],[600,160],[670,160],[670,300],[550,300]],
+ [[400,390],[400,480],[480,480],[480,520],[450,520]],
+ [[620,590],[670,590],[670,660],[740,660]]
+ ];
+ paths.forEach(p=>{g.beginPath();p.forEach((pt,i)=>i?g.lineTo(...pt):g.moveTo(...pt));g.stroke()});
+ g.fillStyle='#21844a';g.beginPath();g.arc(35,40,14,0,Math.PI*2);g.fill();
+ g.fillStyle='#b72d36';g.beginPath();g.arc(740,900,14,0,Math.PI*2);g.fill();
+ g.fillStyle='#26382a';g.font='bold 24px sans-serif';g.fillText('START',45,30);g.fillText('EXIT',680,875);
+ img.src=c.toDataURL();hasMap=true;statusEl.textContent='Demo maze loaded. Tap the map to add your location and draw a trail.';
+}
+function resize(){
+ const r=canvas.getBoundingClientRect(),dpr=Math.max(1,window.devicePixelRatio||1);
+ canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);viewW=r.width;viewH=r.height;draw();
+}
+function fit(){if(!img.width||!img.height)return;scale=Math.min(viewW/img.width,viewH/img.height);offsetX=(viewW-img.width*scale)/2;offsetY=(viewH-img.height*scale)/2;draw()}
+function pointFromEvent(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left-offsetX)/scale,y:(e.clientY-r.top-offsetY)/scale}}
+function draw(){
+ if(!viewW||!viewH)return;ctx.clearRect(0,0,viewW,viewH);ctx.fillStyle='#f8f7ef';ctx.fillRect(0,0,viewW,viewH);
+ if(img.complete&&img.naturalWidth){ctx.save();ctx.translate(offsetX,offsetY);ctx.scale(scale,scale);ctx.drawImage(img,0,0);
+ if(trail.length>1){ctx.beginPath();ctx.moveTo(trail[0].x,trail[0].y);trail.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.strokeStyle='#e7a92e';ctx.lineWidth=8/scale;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke()}
+ if(start){ctx.beginPath();ctx.arc(start.x,start.y,9/scale,0,Math.PI*2);ctx.fillStyle='#21844a';ctx.fill();ctx.strokeStyle='white';ctx.lineWidth=2/scale;ctx.stroke()}
+ if(current){ctx.beginPath();ctx.arc(current.x,current.y,10/scale,0,Math.PI*2);ctx.fillStyle='#1677df';ctx.fill();ctx.strokeStyle='white';ctx.lineWidth=3/scale;ctx.stroke();ctx.beginPath();ctx.arc(current.x,current.y,17/scale,0,Math.PI*2);ctx.strokeStyle='#1677df';ctx.lineWidth=2/scale;ctx.stroke()}
+ ctx.restore()}
+ document.getElementById('pointCount').textContent=trail.length;
+ let dist=0;for(let i=1;i<trail.length;i++)dist+=Math.hypot(trail[i].x-trail[i-1].x,trail[i].y-trail[i-1].y);
+ document.getElementById('distance').textContent=Math.round(dist)+' px';
+ document.getElementById('mapBadge').textContent=current?'Position set · tap to add trail':'Tap map to set location';
+ if(img.naturalWidth) scheduleSave();
+}
+let pointers = new Map(), gesture = null, lastTap = 0;
+function clampScale(v){return Math.max(0.25,Math.min(8,v))}
+function zoomAt(factor,cx,cy){
+ const old=scale, next=clampScale(scale*factor);
+ const r=canvas.getBoundingClientRect(), x=cx-r.left, y=cy-r.top;
+ const mapX=(x-offsetX)/old, mapY=(y-offsetY)/old;
+ scale=next;offsetX=x-mapX*scale;offsetY=y-mapY*scale;draw();
+}
+canvas.addEventListener('pointerdown',e=>{
+ if(!img.naturalWidth)return;
+ canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(pointers.size===1){gesture={kind:'one',id:e.pointerId,x:e.clientX,y:e.clientY,ox:offsetX,oy:offsetY,moved:false};}
+ else if(pointers.size===2){
+  const pts=[...pointers.values()], mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+  gesture={kind:'pinch',dist:Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y),scale,mid,offsetX,offsetY,mapX:(mid.x-canvas.getBoundingClientRect().left-offsetX)/scale,mapY:(mid.y-canvas.getBoundingClientRect().top-offsetY)/scale};
+ }
+});
+canvas.addEventListener('pointermove',e=>{
+ if(!pointers.has(e.pointerId))return;
+ pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(pointers.size>=2){
+  const pts=[...pointers.values()], mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+  const dist=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+  if(!gesture||gesture.kind!=='pinch')return;
+  scale=clampScale(gesture.scale*dist/Math.max(gesture.dist,1));
+  const r=canvas.getBoundingClientRect();offsetX=mid.x-r.left-gesture.mapX*scale;offsetY=mid.y-r.top-gesture.mapY*scale;draw();return;
+ }
+ if(!gesture||gesture.kind!=='one')return;
+ const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;
+ if(Math.abs(dx)+Math.abs(dy)>8)gesture.moved=true;
+ if(gesture.moved){offsetX=gesture.ox+dx;offsetY=gesture.oy+dy;draw()}
+});
+function endPointer(e){
+ const was=gesture, wasCount=pointers.size;
+ pointers.delete(e.pointerId);
+ if(wasCount>=2){gesture=null;return}
+ gesture=null;
+ if(!was||was.kind!=='one'||was.moved)return;
+ const now=Date.now();
+ if(now-lastTap<320){zoomAt(1.7,e.clientX,e.clientY);lastTap=0;return}
+ lastTap=now;
+ const p=pointFromEvent(e);
+ if(p.x>=0&&p.y>=0&&p.x<img.naturalWidth&&p.y<img.naturalHeight){current=p;trail.push({...p});draw()}
+}
+canvas.addEventListener('pointerup',endPointer);
+canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);gesture=null});
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.deltaY<0?1.15:1/1.15,e.clientX,e.clientY)},{passive:false});
+document.getElementById('zoomInBtn').onclick=()=>zoomAt(1.35,canvas.getBoundingClientRect().left+viewW/2,canvas.getBoundingClientRect().top+viewH/2);
+document.getElementById('zoomOutBtn').onclick=()=>zoomAt(1/1.35,canvas.getBoundingClientRect().left+viewW/2,canvas.getBoundingClientRect().top+viewH/2);
+fileInput.addEventListener('change',()=>{const f=fileInput.files[0];if(!f)return;if(!f.type.startsWith('image/')){statusEl.textContent='Please choose an image file. PDF import will be added in a later milestone.';return}const u=URL.createObjectURL(f);img=new Image();img.onload=()=>{hasMap=true;trail=[];start=null;current=null;fit();statusEl.textContent='Loaded '+f.name+'. Tap the map to record your position.';URL.revokeObjectURL(u);saveSession()};img.onerror=()=>statusEl.textContent='Could not read that image. Try a JPG or PNG.';img.src=u;});
+document.getElementById('demoBtn').onclick=()=>{trail=[];start=null;current=null;makeDemo();img.onload=()=>{fit();saveSession()}};
+document.getElementById('fitBtn').onclick=fit;
+document.getElementById('undoBtn').onclick=()=>{trail.pop();current=trail.length?trail[trail.length-1]:null;draw()};
+document.getElementById('clearBtn').onclick=()=>{if(confirm('Clear the entire traveled trail?')){trail=[];current=null;draw()}};
+document.getElementById('startBtn').onclick=()=>{if(current){start={...current};draw()}else alert('Tap the map first to set your position.')};
+document.getElementById('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({format:'maze-tracker-trail-v1',pathMode:document.getElementById('pathMode').value,start,current,trail},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='maze-trail.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+document.getElementById('saveBtn').onclick=()=>saveSession(true);
+document.getElementById('restoreBtn').onclick=()=>restoreSession();
+document.getElementById('gpsStartBtn').onclick=()=>startGPS();
+document.getElementById('gpsStopBtn').onclick=()=>stopGPS();
+
+
+window.addEventListener('resize',resize);makeDemo();resize();img.onload=()=>fit();restoreSession().catch(()=>{});
+</script>
+</body>
+</html>
