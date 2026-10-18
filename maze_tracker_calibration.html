@@ -1,140 +1,641 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#173c2c">
-<title>Maze Tracker — Prototype</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<title>Corn Maze Tracker</title>
 <style>
-:root{--green:#173c2c;--mint:#dff1e4;--ink:#17251d;--muted:#64736a;--blue:#1677df;--gold:#e7a92e;--paper:#f8f7ef}
-*{box-sizing:border-box}body{margin:0;background:#f2f5f1;color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-header{background:var(--green);color:white;padding:16px 18px 14px;position:sticky;top:0;z-index:2}
-h1{font-size:21px;margin:0 0 3px}header p{margin:0;color:#d6e7da;font-size:13px}
-main{max-width:850px;margin:auto;padding:12px;display:grid;gap:12px}
-.panel{background:white;border:1px solid #dce4dc;border-radius:16px;padding:13px;box-shadow:0 2px 8px #183b2b0b}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}
-button,.filelabel,select{font:inherit;border-radius:10px;border:1px solid #cbd8cd;padding:10px 12px;background:white;color:var(--ink);min-height:42px}
-button{cursor:pointer;font-weight:650}.primary{background:var(--green);color:white;border-color:var(--green)}.soft{background:#eaf3eb;border-color:#d6e7d8}.danger{color:#9c2929}
-.filelabel{display:flex;align-items:center;justify-content:center;text-align:center;font-weight:650;cursor:pointer;background:#eaf3eb}input[type=file]{display:none}
-label.small{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
-select{width:100%}.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{min-width:0}
-#mapWrap{height:min(57vh,520px);min-height:300px;background:var(--paper);border-radius:12px;overflow:hidden;position:relative;touch-action:pan-y}
-canvas{width:100%;height:100%;display:block;touch-action:none}
-.mapbadge{position:absolute;left:10px;top:10px;background:#fffE;border:1px solid #d7dfd5;border-radius:9px;padding:6px 9px;font-size:12px;font-weight:650}
-.stats{display:flex;gap:8px}.stat{background:#f3f6f2;border-radius:10px;padding:9px;flex:1;min-width:0}.stat b{display:block;font-size:16px}.stat span{font-size:11px;color:var(--muted)}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#536157}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-.hint{font-size:12px;line-height:1.45;color:var(--muted);margin:8px 0 0}.sectiontitle{font-size:14px;font-weight:750;margin:0 0 10px}
-@media(min-width:700px){main{grid-template-columns:300px 1fr;align-items:start} .mapPanel{grid-column:2;grid-row:1 / span 3}#mapWrap{height:560px}.setup{grid-column:1;grid-row:1}.tracking{grid-column:1;grid-row:2}.help{grid-column:1;grid-row:3}}
+:root {
+  --green: #246b36;
+  --light: #edf6ed;
+  --border: #cbd5cb;
+  --red: #b3261e;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, Arial, sans-serif;
+  color: #202820;
+  background: #f5f7f4;
+}
+header {
+  background: var(--green);
+  color: white;
+  padding: 16px;
+}
+header h1 { margin: 0 0 4px; font-size: 1.35rem; }
+header p { margin: 0; font-size: .9rem; }
+main { padding: 12px; max-width: 850px; margin: auto; }
+section {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+h2 { margin: 0 0 10px; font-size: 1.08rem; }
+p { line-height: 1.45; }
+button, input, select {
+  font: inherit;
+}
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 13px;
+  background: var(--green);
+  color: white;
+  cursor: pointer;
+  min-height: 44px;
+}
+button:disabled { opacity: .4; cursor: not-allowed; }
+button.secondary { background: #e8eee8; color: #183b20; }
+button.danger { background: var(--red); }
+button.active { outline: 3px solid #edb949; }
+button:focus-visible, input:focus-visible {
+  outline: 3px solid #edb949;
+  outline-offset: 2px;
+}
+input[type=file] { width: 100%; margin: 8px 0; }
+.small { font-size: .88rem; color: #4b594b; }
+.status { padding: 10px; background: var(--light); border-radius: 8px; }
+.point-list { display: grid; gap: 10px; }
+.point {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 10px;
+}
+.point-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.point-top strong { font-size: 1rem; }
+.point-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+.point-actions button { flex: 1; }
+.pill {
+  border-radius: 20px;
+  padding: 4px 8px;
+  font-size: .78rem;
+  background: #eee;
+}
+.pill.done { background: #d9f2dc; color: #145322; }
+.pill.wait { background: #fff1cd; color: #624800; }
+#mapViewport {
+  width: 100%;
+  overflow: auto;
+  max-height: 65vh;
+  background: #e5e9e2;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  touch-action: pan-x pan-y;
+}
+#mapStage {
+  position: relative;
+  display: inline-block;
+  min-width: 100%;
+  line-height: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#mazeImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 180px;
+  object-fit: contain;
+}
+#mapStage.empty #mazeImage { display: none; }
+#mapPlaceholder {
+  min-height: 220px;
+  padding: 24px;
+  line-height: 1.4;
+  text-align: center;
+  color: #536153;
+}
+#mapStage:not(.empty) #mapPlaceholder { display: none; }
+.marker, #currentMarker, .trail-dot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.marker {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 1px 5px #0008;
+  color: white;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 24px;
+  text-align: center;
+  z-index: 3;
+}
+#marker1 { background: #1769e0; }
+#marker2 { background: #b3261e; }
+#marker3 { background: #7a36b8; }
+#currentMarker {
+  width: 18px;
+  height: 18px;
+  border: 3px solid white;
+  background: #08a5ec;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #08a5ec88;
+  z-index: 5;
+  display: none;
+}
+.trail-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #08a5ec;
+  opacity: .8;
+  z-index: 2;
+}
+#calibrateButton { width: 100%; margin-top: 12px; font-weight: 700; }
+.grid-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.grid-buttons button { flex: 1; }
+#mapMessage { margin-top: 9px; }
+label { display: block; margin: 8px 0; }
 </style>
 </head>
 <body>
-<header><h1>🌽 Maze Tracker</h1><p>Interactive maze map · manual positioning + GPS readout</p></header>
+<header>
+  <h1>🌽 Corn Maze Tracker</h1>
+  <p>Set three map/GPS reference points to align your maze.</p>
+</header>
+
 <main>
-<section class="panel setup">
-<h2 class="sectiontitle">1. Load your maze</h2>
-<div class="row">
-<label class="filelabel" for="imageFile">Choose map picture</label><input id="imageFile" type="file" accept="image/*">
-<button id="demoBtn" class="soft">Use demo</button>
-</div>
-<p class="hint" id="fileStatus">A sample maze is shown. Choose a JPG, PNG, or another phone image to try your own map.</p>
-<div style="margin-top:13px" class="field">
-<label class="small" for="pathMode">What counts as a path?</label>
-<select id="pathMode"><option value="lines">The lines are the paths</option><option value="spaces">The spaces between lines are paths</option><option value="manual">I'll mark my position manually (map only)</option></select>
-</div>
-</section>
-<section class="panel mapPanel">
-<div class="row" style="margin-bottom:10px"><h2 class="sectiontitle" style="margin:0;flex:2">2. Tap the map to move</h2><button id="zoomOutBtn" aria-label="Zoom out">−</button><button id="zoomInBtn" aria-label="Zoom in">+</button><button id="fitBtn" class="soft">Fit map</button></div>
-<div id="mapWrap"><canvas id="mapCanvas" aria-label="Interactive maze map. Tap to place your location."></canvas><div class="mapbadge" id="mapBadge">Tap map to set location</div></div>
-<p class="hint">Tap to place your position. Pinch with two fingers to zoom, drag with one finger to pan after zooming, or use + / −. Double-tap to zoom in. This prototype does not yet snap to corridors or use GPS.</p>
-<div class="panel" style="margin-top:10px;padding:10px">
-  <div class="row" style="align-items:center">
-    <strong>Map calibration</strong><span class="badge" id="calBadge">Not calibrated</span>
-  </div>
-  <p class="hint">For each reference point, stand at a recognizable spot, wait for a reasonably accurate GPS fix, tap “Capture GPS point”, then tap that exact spot on the maze image. Use at least 3 points spread around the maze.</p>
-  <div class="row" style="margin-top:8px">
-    <button id="captureCalBtn" class="primary">Capture GPS point</button>
-    <button id="finishCalBtn">Calibrate map</button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <button id="clearCalBtn" class="danger">Reset calibration</button>
-    <span class="badge" id="calPointCount">0 reference points</span>
-  </div>
-  <p class="hint" id="calStatus" aria-live="polite">Start GPS first. Calibration needs 3 or more reference points with good spread.</p>
-</div>
-</section>
-<section class="panel tracking">
-<h2 class="sectiontitle">3. Your progress</h2>
-<div class="stats"><div class="stat"><b id="pointCount">0</b><span>Recorded points</span></div><div class="stat"><b id="distance">0</b><span>Map distance*</span></div></div>
-<div class="row" style="margin-top:10px"><button id="undoBtn">Undo last point</button><button id="clearBtn" class="danger">Clear trail</button></div>
-<div class="row" style="margin-top:8px"><button id="startBtn" class="primary">Set start here</button><button id="exportBtn">Export trail</button></div>
-<div class="row" style="margin-top:8px"><button id="saveBtn" class="soft">Save session now</button><button id="restoreBtn">Restore saved session</button></div>
-<p class="hint" id="saveStatus" aria-live="polite">Session saving will start when the map is ready.</p>
-<div class="panel" style="margin-top:10px;padding:10px">
-  <div class="row" style="align-items:center">
-    <strong>GPS location</strong><span class="badge" id="gpsBadge">GPS off</span>
-  </div>
-  <p class="hint" id="gpsStatus" aria-live="polite">Start GPS to request your phone's location and see its accuracy.</p>
-  <div class="row" style="margin-top:8px">
-    <button id="gpsStartBtn" class="primary">Start GPS</button>
-    <button id="gpsStopBtn" disabled>Stop GPS</button>
-  </div>
-  <p class="hint">GPS coordinates are shown here, but they cannot be plotted onto the maze picture until the map is calibrated to real-world coordinates. You can still tap the map to correct your position manually.</p>
-</div>
-<p class="hint">*Distance is measured in image pixels, not feet or meters. Export saves your trail coordinates as a JSON file.</p>
-</section>
-<section class="panel help">
-<h2 class="sectiontitle">Color key</h2>
-<div class="legend"><span><i class="dot" style="background:#e7a92e"></i>Traveled trail</span><span><i class="dot" style="background:#1677df"></i>Current position</span><span><i class="dot" style="background:#21844a"></i>Start point</span></div>
-<p class="hint">Tip: use a clear, straight-on photo for the best view. This prototype now saves your map and trail in this browser on this device. Browser storage can be cleared by your device or browser settings.</p>
-</section>
+  <section>
+    <h2>1. Load your maze map</h2>
+    <p class="small">Choose a maze image from your phone. For best results, use a clear, straight-on image or a screenshot of the maze map.</p>
+    <input id="fileInput" type="file" accept="image/*">
+    <div class="grid-buttons">
+      <button class="secondary" id="clearMap">Clear map</button>
+      <button class="secondary" id="clearTrail">Clear trail</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Place the three map reference points</h2>
+    <p class="small">Select a point below, then tap its exact location on the map. Next, physically go to that same location and press its Set GPS button. Repeat for all three points.</p>
+
+    <div class="point-list" id="pointList">
+      <div class="point" data-point="0">
+        <div class="point-top">
+          <strong>Reference Point 1 — Blue</strong>
+          <span class="pill wait" id="status0">Needs map + GPS</span>
+        </div>
+        <div class="small" id="details0">Map: not set · GPS: not set</div>
+        <div class="point-actions">
+          <button id="select0" class="active" onclick="selectPoint(0)">Select Point 1</button>
+          <button onclick="captureGPS(0)">Set GPS 1</button>
+        </div>
+      </div>
+
+      <div class="point" data-point="1">
+        <div class="point-top">
+          <strong>Reference Point 2 — Red</strong>
+          <span class="pill wait" id="status1">Needs map + GPS</span>
+        </div>
+        <div class="small" id="details1">Map: not set · GPS: not set</div>
+        <div class="point-actions">
+          <button id="select1" class="secondary" onclick="selectPoint(1)">Select Point 2</button>
+          <button onclick="captureGPS(1)">Set GPS 2</button>
+        </div>
+      </div>
+
+      <div class="point" data-point="2">
+        <div class="point-top">
+          <strong>Reference Point 3 — Purple</strong>
+          <span class="pill wait" id="status2">Needs map + GPS</span>
+        </div>
+        <div class="small" id="details2">Map: not set · GPS: not set</div>
+        <div class="point-actions">
+          <button id="select2" class="secondary" onclick="selectPoint(2)">Select Point 3</button>
+          <button onclick="captureGPS(2)">Set GPS 3</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="mapMessage" class="status" role="status">
+      Point 1 is selected. Tap its location on the map below.
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Maze map</h2>
+    <p class="small">Tap the map to place the currently selected reference point. You can select another point at any time to move or replace its map position.</p>
+    <div id="mapViewport">
+      <div id="mapStage" class="empty">
+        <img id="mazeImage" alt="Uploaded maze map">
+        <div id="mapPlaceholder">Upload a maze image above to begin.<br>Then select a reference point and tap its location.</div>
+        <div class="marker" id="marker0" style="display:none">1</div>
+        <div class="marker" id="marker1" style="display:none">2</div>
+        <div class="marker" id="marker2" style="display:none">3</div>
+        <div id="currentMarker"></div>
+        <div id="trailLayer"></div>
+      </div>
+    </div>
+    <button id="calibrateButton" disabled>Calibrate Map — complete all 3 points first</button>
+    <div id="calibrationStatus" class="status" role="status" style="margin-top:10px">
+      Not calibrated.
+    </div>
+  </section>
+
+  <section>
+    <h2>4. GPS tracking</h2>
+    <div class="status" id="gpsStatus" role="status">GPS has not started.</div>
+    <p class="small">Allow location access and use this page over HTTPS. GPS accuracy can be poor under trees or around tall structures. Calibration aligns your current GPS position with the uploaded image; it cannot improve the GPS receiver's actual accuracy.</p>
+    <div class="grid-buttons">
+      <button id="startGPS">Start GPS tracking</button>
+      <button class="secondary" id="stopGPS">Stop GPS</button>
+    </div>
+    <p class="small" id="lastGPS">Last GPS reading: none</p>
+    <h2 style="margin-top:18px">Manual position correction</h2>
+    <p class="small">If GPS drifts, tap the correct position on the map to move the blue current-position marker there. This adds a manual trail point.</p>
+    <button id="manualMode" class="secondary">Manual correction: OFF</button>
+  </section>
 </main>
+
 <script>
-const canvas=document.getElementById('mapCanvas'),ctx=canvas.getContext('2d');
-const fileInput=document.getElementById('imageFile'),statusEl=document.getElementById('fileStatus');
-let img=new Image(), hasMap=false, trail=[], start=null, current=null, scale=1, offsetX=0,offsetY=0, drag=null, viewW=0,viewH=0;
-const DB_NAME='maze-tracker-db', DB_STORE='sessions', DB_KEY='latest';
-let saveTimer=null, dbPromise=null;
-let gpsWatchId=null, latestGPS=null;
-let calibrationPoints=[], pendingCalGPS=null, gpsTransform=null, lastGpsTrailPoint=null;
-function gpsToLocal(gps, origin){
- const lat0=origin.latitude*Math.PI/180;
- return {east:(gps.longitude-origin.longitude)*111320*Math.cos(lat0), north:(gps.latitude-origin.latitude)*110540};
-}
-function solve3(matrix, values){
- const a=matrix.map((r,i)=>[...r,values[i]]);
- for(let col=0;col<3;col++){
-  let pivot=col;
-  for(let r=col+1;r<3;r++)if(Math.abs(a[r][col])>Math.abs(a[pivot][col]))pivot=r;
-  if(Math.abs(a[pivot][col])<1e-10)return null;
-  [a[col],a[pivot]]=[a[pivot],a[col]];
-  const div=a[col][col];for(let j=col;j<4;j++)a[col][j]/=div;
-  for(let r=0;r<3;r++)if(r!==col){const f=a[r][col];for(let j=col;j<4;j++)a[r][j]-=f*a[col][j]}
- }
- return a.map(r=>r[3]);
-}
-function fitCalibration(){
- if(calibrationPoints.length<3)return false;
- const origin=calibrationPoints[0].gps;
- const rows=calibrationPoints.map(p=>{const q=gpsToLocal(p.gps,origin);return [q.east,q.north,1]});
- const normal=[[0,0,0],[0,0,0],[0,0,0]], bx=[0,0,0], by=[0,0,0];
- rows.forEach((r,i)=>{for(let a=0;a<3;a++){bx[a]+=r[a]*calibrationPoints[i].map.x;by[a]+=r[a]*calibrationPoints[i].map.y;for(let b=0;b<3;b++)normal[a][b]+=r[a]*r[b]}});
- const x=solve3(normal,bx),y=solve3(normal,by);
- if(!x||!y)return false;
- gpsTransform={origin,x,y};return true;
-}
-function gpsToMap(gps){
- if(!gpsTransform)return null;
- const q=gpsToLocal(gps,gpsTransform.origin);
- return {x:gpsTransform.x[0]*q.east+gpsTransform.x[1]*q.north+gpsTransform.x[2],y:gpsTransform.y[0]*q.east+gpsTransform.y[1]*q.north+gpsTransform.y[2]};
-}
-function updateCalibrationUI(){
- document.getElementById('calPointCount').textContent=calibrationPoints.length+' reference point'+(calibrationPoints.length===1?'':'s');
- document.getElementById('calBadge').textContent=gpsTransform?'Calibrated':'Not calibrated';
-}
-function updateFromGPS(){
- if(!gpsTransform||!latestGPS||latestGPS.accuracy>35||!img.naturalWidth)return;
- const p=gpsToMap(latestGPS);
- if(!p||p.x<0||p.y<0||p.x>img.naturalWidth||p.y>img.naturalHeight)return;
+(() => {
+  "use strict";
+
+  const points = [
+    { map: null, gps: null },
+    { map: null, gps: null },
+    { map: null, gps: null }
+  ];
+
+  let selectedPoint = 0;
+  let currentGPS = null;
+  let watchId = null;
+  let calibration = null;
+  let manualMode = false;
+  let trail = [];
+  let mapLoaded = false;
+
+  const $ = id => document.getElementById(id);
+  const stage = $("mapStage");
+  const image = $("mazeImage");
+  const markerColors = ["#1769e0", "#b3261e", "#7a36b8"];
+
+  function message(text) {
+    $("mapMessage").textContent = text;
+  }
+
+  function setCalibrationMessage(text) {
+    $("calibrationStatus").textContent = text;
+  }
+
+  function allPointsComplete() {
+    return points.every(p => p.map !== null && p.gps !== null);
+  }
+
+  function updatePointUI() {
+    points.forEach((p, i) => {
+      const mapOK = p.map !== null;
+      const gpsOK = p.gps !== null;
+      const complete = mapOK && gpsOK;
+      const status = $("status" + i);
+      status.textContent = complete ? "Complete ✓" :
+        mapOK && !gpsOK ? "Map set · GPS needed" :
+        !mapOK && gpsOK ? "GPS set · Map needed" :
+        "Needs map + GPS";
+      status.className = "pill " + (complete ? "done" : "wait");
+
+      $("details" + i).textContent =
+        "Map: " + (mapOK ?
+          (p.map.x * 100).toFixed(1) + "%, " + (p.map.y * 100).toFixed(1) + "%" :
+          "not set") +
+        " · GPS: " + (gpsOK ?
+          p.gps.lat.toFixed(6) + ", " + p.gps.lon.toFixed(6) :
+          "not set");
+
+      $("select" + i).className =
+        i === selectedPoint ? "active" : "secondary";
+
+      const marker = $("marker" + i);
+      marker.style.display = mapOK ? "block" : "none";
+      if (mapOK) {
+        marker.style.left = (p.map.x * 100) + "%";
+        marker.style.top = (p.map.y * 100) + "%";
+      }
+    });
+
+    const button = $("calibrateButton");
+    button.disabled = !allPointsComplete();
+    button.textContent = allPointsComplete()
+      ? "Calibrate Map"
+      : "Calibrate Map — complete all 3 points first";
+  }
+
+  window.selectPoint = function(i) {
+    selectedPoint = i;
+    updatePointUI();
+    message("Point " + (i + 1) + " selected. Tap its exact location on the map.");
+  };
+
+  function invalidateCalibration() {
+    calibration = null;
+    $("currentMarker").style.display = "none";
+    setCalibrationMessage("Reference points changed. Calibrate the map again.");
+  }
+
+  $("fileInput").addEventListener("change", event => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file, such as JPG or PNG.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      image.onload = () => {
+        stage.classList.remove("empty");
+        mapLoaded = true;
+        points.forEach(p => p.map = null);
+        trail = [];
+        invalidateCalibration();
+        renderTrail();
+        updatePointUI();
+        message("Map loaded. Select Point 1, then tap its location on the image.");
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  stage.addEventListener("click", event => {
+    if (!mapLoaded) {
+      message("Upload a maze image first.");
+      return;
+    }
+
+    const rect = image.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    // Use coordinates relative to the displayed image.
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = (event.clientY - rect.top) / rect.height;
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+
+    if (manualMode && calibration && currentGPS) {
+      currentGPS = pixelToGPS({ x, y });
+      addTrailPoint({ x, y });
+      renderCurrentPosition({ x, y });
+      $("lastGPS").textContent =
+        "Position manually corrected on map. GPS receiver coordinates remain unchanged.";
+      message("Manual position corrected. The next GPS update may move the marker again.");
+      return;
+    }
+
+    points[selectedPoint].map = { x, y };
+    invalidateCalibration();
+    updatePointUI();
+    message("Map position saved for Point " + (selectedPoint + 1) +
+      ". Now stand at that real-world location and press Set GPS " +
+      (selectedPoint + 1) + ".");
+  });
+
+  window.captureGPS = function(i) {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    $("gpsStatus").textContent = "Getting GPS reading for Point " + (i + 1) + "…";
+
+    navigator.geolocation.getCurrentPosition(position => {
+      const gps = {
+        lat: position.coords.latitude,
+        lon: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        timestamp: position.timestamp
+      };
+      points[i].gps = gps;
+      currentGPS = gps;
+      invalidateCalibration();
+      updatePointUI();
+
+      $("gpsStatus").textContent =
+        "GPS reading captured. Accuracy: approximately " +
+        Math.round(gps.accuracy) + " metres.";
+      $("lastGPS").textContent =
+        "Last GPS: " + gps.lat.toFixed(6) + ", " +
+        gps.lon.toFixed(6) + " · accuracy " +
+        Math.round(gps.accuracy) + " m";
+
+      message("GPS saved for Point " + (i + 1) +
+        ". " + (points[i].map ?
+        "Both coordinates are set for this point." :
+        "Now select Point " + (i + 1) +
+        " and tap its location on the map."));
+    }, error => {
+      $("gpsStatus").textContent = "Could not get GPS: " + error.message;
+      alert("GPS capture failed: " + error.message +
+        "\nCheck location permissions and try again outdoors.");
+    }, {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0
+    });
+  };
+
+  // Solve a 3-variable linear system using Gaussian elimination.
+  function solve3(matrix, vector) {
+    const a = matrix.map((row, i) => row.concat(vector[i]));
+
+    for (let col = 0; col < 3; col++) {
+      let pivot = col;
+      for (let r = col + 1; r < 3; r++) {
+        if (Math.abs(a[r][col]) > Math.abs(a[pivot][col])) pivot = r;
+      }
+      if (Math.abs(a[pivot][col]) < 1e-12) {
+        throw new Error("Reference points are too close together or aligned. Choose three well-spaced points.");
+      }
+      [a[col], a[pivot]] = [a[pivot], a[col]];
+
+      const divisor = a[col][col];
+      for (let c = col; c < 4; c++) a[col][c] /= divisor;
+
+      for (let r = 0; r < 3; r++) {
+        if (r === col) continue;
+        const factor = a[r][col];
+        for (let c = col; c < 4; c++) {
+          a[r][c] -= factor * a[col][c];
+        }
+      }
+    }
+    return a.map(row => row[3]);
+  }
+
+  function gpsToLocalMeters(gps, origin) {
+    const latRad = origin.lat * Math.PI / 180;
+    return {
+      x: (gps.lon - origin.lon) * 111320 * Math.cos(latRad),
+      y: (gps.lat - origin.lat) * 110540
+    };
+  }
+
+  $("calibrateButton").addEventListener("click", () => {
+    if (!allPointsComplete()) return;
+
+    try {
+      const origin = points[0].gps;
+      const local = points.map(p => gpsToLocalMeters(p.gps, origin));
+      const rows = local.map(p => [p.x, p.y, 1]);
+
+      const xMap = points.map(p => p.map.x);
+      const yMap = points.map(p => p.map.y);
+
+      const ax = solve3(rows, xMap);
+      const ay = solve3(rows, yMap);
+
+      calibration = { origin, ax, ay };
+
+      // Report residual error at each reference point.
+      let errorSum = 0;
+      points.forEach((p, i) => {
+        const estimate = gpsToPixel(p.gps);
+        const dx = (estimate.x - p.map.x) * image.naturalWidth;
+        const dy = (estimate.y - p.map.y) * image.naturalHeight;
+        errorSum += Math.hypot(dx, dy);
+      });
+      const averagePixels = errorSum / 3;
+
+      setCalibrationMessage(
+        "Calibration complete. Three reference points are aligned. " +
+        "Average reference residual: " + averagePixels.toFixed(1) +
+        " image pixels. GPS accuracy still depends on your phone."
+      );
+
+      if (currentGPS) updateCurrentFromGPS(currentGPS);
+      message("Map calibrated successfully. Start GPS tracking to follow your position.");
+    } catch (error) {
+      calibration = null;
+      setCalibrationMessage("Calibration failed: " + error.message);
+    }
+  });
+
+  function gpsToPixel(gps) {
+    const local = gpsToLocalMeters(gps, calibration.origin);
+    return {
+      x: calibration.ax[0] * local.x +
+         calibration.ax[1] * local.y + calibration.ax[2],
+      y: calibration.ay[0] * local.x +
+         calibration.ay[1] * local.y + calibration.ay[2]
+    };
+  }
+
+  function pixelToGPS(pixel) {
+    // Invert the affine transform from image coordinates to local GPS meters.
+    const ax = calibration.ax, ay = calibration.ay;
+    const det = ax[0] * ay[1] - ax[1] * ay[0];
+    if (Math.abs(det) < 1e-12) return currentGPS;
+
+    const px = pixel.x - ax[2];
+    const py = pixel.y - ay[2];
+    const east = (px * ay[1] - ax[1] * py) / det;
+    const north = (ax[0] * py - px * ay[0]) / det;
+
+    return {
+      lat: calibration.origin.lat + north / 110540,
+      lon: calibration.origin.lon +
+        east / (111320 * Math.cos(calibration.origin.lat * Math.PI / 180))
+    };
+  }
+
+  function renderCurrentPosition(pixel) {
+    const marker = $("currentMarker");
+    marker.style.display = "block";
+    marker.style.left = (pixel.x * 100) + "%";
+    marker.style.top = (pixel.y * 100) + "%";
+  }
+
+  function updateCurrentFromGPS(gps) {
+    if (!calibration || manualMode) return;
+    const pixel = gpsToPixel(gps);
+    renderCurrentPosition(pixel);
+    addTrailPoint(pixel);
+    renderTrail();
+  }
+
+  function addTrailPoint(pixel) {
+    if (!pixel || !Number.isFinite(pixel.x) || !Number.isFinite(pixel.y)) return;
+    if (pixel.x < 0 || pixel.x > 1 || pixel.y < 0 || pixel.y > 1) return;
+
+    const previous = trail[trail.length - 1];
+    if (previous && Math.hypot(
+      (previous.x - pixel.x) * image.naturalWidth,
+      (previous.y - pixel.y) * image.naturalHeight
+    ) < 3) return;
+
+    trail.push({ x: pixel.x, y: pixel.y });
+    if (trail.length > 3000) trail.shift();
+    renderTrail();
+  }
+
+  function renderTrail() {
+    const layer = $("trailLayer");
+    layer.innerHTML = "";
+    trail.forEach(p => {
+      const dot = document.createElement("div");
+      dot.className = "trail-dot";
+      dot.style.left = (p.x * 100) + "%";
+      dot.style.top = (p.y * 100) + "%";
+      layer.appendChild(dot);
+    });
+  }
+
+  $("startGPS").addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by this browser.");
+      return;
+    }
+    if (watchId !== null) return;
+
+    watchId = navigator.geolocation.watchPosition(position => {
+      currentGPS = {
+        lat: position.coords.latitude,
+        lon: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        timestamp: position.timestamp
+      };
+      $("gpsStatus").textContent =
+        "GPS active · accuracy approximately " +
+        Math.round(currentGPS.accuracy) + " m";
+      $("lastGPS").textContent =
+        "Last GPS: " + currentGPS.lat.toFixed(6) + ", " +
+        currentGPS.lon.toFixed(6) + " · accuracy " +
+        Math.round(currentGPS.accuracy) + " m";
+
+      if (calibration && !manualMode) updateCurrentFromGPS(currentGPS);
+    }, error => {
+      $("gpsStatus").textContent = "GPS error: " + error.message;
+    }, {
+      enableHighAccuracy: true,
+      maximumAge: 1000,
+      timeout: 20000
+    });
+
+    $("gpsStatus").textContent = "GPS tracking started. Waiting for a location fix…";
+  });
+
+  $("stopGPS").addEventListener("click", () => {
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    $("gpsStatus").textContent = "GPS tracking stopped.";
+  });
+
+  $("manualMode").addEventListener("click", () => {
+    manualMode = !manualMode;
+    $("manualMode").textContent =
+   naturalHeight)return;
  current=p;
  if(!lastGpsTrailPoint||Math.hypot(p.x-lastGpsTrailPoint.x,p.y-lastGpsTrailPoint.y)>=5){
   trail.push({...p});lastGpsTrailPoint={...p};
